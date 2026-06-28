@@ -187,4 +187,129 @@
   handleHeaderScroll();
   updateActiveNavLink();
   initRevealAnimations();
+  initHeroEffects();
 })();
+
+/**
+ * Hero section — particle background & avatar tilt
+ */
+function initHeroEffects() {
+  'use strict';
+
+  var canvas = document.getElementById('heroCanvas');
+  var avatarCard = document.getElementById('heroAvatarCard');
+  var heroSection = document.getElementById('hero');
+
+  if (!canvas || !heroSection) return;
+
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) return;
+
+  var ctx = canvas.getContext('2d');
+  var particles = [];
+  var particleCount = 48;
+  var animationId = null;
+
+  function resizeCanvas() {
+    var rect = heroSection.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  }
+
+  function createParticles() {
+    particles = [];
+    for (var i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: Math.random() * 1.5 + 0.5,
+        speedX: (Math.random() - 0.5) * 0.3,
+        speedY: (Math.random() - 0.5) * 0.3,
+        opacity: Math.random() * 0.4 + 0.15
+      });
+    }
+  }
+
+  function drawParticles() {
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+
+      p.x += p.speedX;
+      p.y += p.speedY;
+
+      if (p.x < 0) p.x = canvas.width;
+      if (p.x > canvas.width) p.x = 0;
+      if (p.y < 0) p.y = canvas.height;
+      if (p.y > canvas.height) p.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(139, 92, 246, ' + p.opacity + ')';
+      ctx.fill();
+
+      for (var j = i + 1; j < particles.length; j++) {
+        var p2 = particles[j];
+        var dx = p.x - p2.x;
+        var dy = p.y - p2.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = 'rgba(99, 102, 241, ' + (0.12 * (1 - dist / 120)) + ')';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    animationId = requestAnimationFrame(drawParticles);
+  }
+
+  function handleHeroMouseMove(e) {
+    if (!avatarCard) return;
+
+    var rect = heroSection.getBoundingClientRect();
+    var x = (e.clientX - rect.left) / rect.width - 0.5;
+    var y = (e.clientY - rect.top) / rect.height - 0.5;
+
+    avatarCard.style.transform =
+      'perspective(1000px) rotateY(' + (x * 12) + 'deg) rotateX(' + (-y * 12) + 'deg)';
+  }
+
+  function resetAvatarTilt() {
+    if (avatarCard) {
+      avatarCard.style.transform = '';
+    }
+  }
+
+  resizeCanvas();
+  createParticles();
+  drawParticles();
+
+  window.addEventListener('resize', function () {
+    resizeCanvas();
+    createParticles();
+  });
+
+  if (avatarCard && window.matchMedia('(pointer: fine)').matches) {
+    heroSection.addEventListener('mousemove', handleHeroMouseMove);
+    heroSection.addEventListener('mouseleave', resetAvatarTilt);
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+    } else if (!animationId) {
+      drawParticles();
+    }
+  });
+}
